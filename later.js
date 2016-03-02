@@ -1,3 +1,4 @@
+var moment = require('moment-timezone');
 later = function() {
   "use strict";
   var later = {
@@ -632,6 +633,14 @@ later = function() {
       var compare = compareFn(dir), loopCount = count, maxAttempts = 1e3, schedStarts = [], exceptStarts = [], next, end, results = [], isForward = dir === "next", lastResult, rStart = isForward ? 0 : 1, rEnd = isForward ? 1 : 0;
       startDate = startDate ? new Date(startDate) : new Date();
       if (!startDate || !startDate.getTime()) throw new Error("Invalid start date.");
+      var offset = 0;
+      if(sched.tz){
+        offset = moment.tz.zone(sched.tz).parse(startDate);
+        startDate.setTime(startDate.getTime() - offset*60*1000);
+        if(endDate){
+          endDate.setTime(endDate.getTime() - offset*60*1000);
+        }
+      }
       setNextStarts(dir, schedules, schedStarts, startDate);
       setRangeStarts(dir, exceptions, exceptStarts, startDate);
       while (maxAttempts-- && loopCount && (next = findNext(schedStarts, compare))) {
@@ -666,6 +675,10 @@ later = function() {
       }
       for (var i = 0, len = results.length; i < len; i++) {
         var result = results[i];
+        if(sched.tz){
+          offset = moment.tz.zone(sched.tz).parse(startDate);
+          result.setTime(result.getTime() + offset*60*1000);
+        }
         results[i] = Object.prototype.toString.call(result) === "[object Array]" ? [ cleanDate(result[0]), cleanDate(result[1]) ] : cleanDate(result);
       }
       return results.length === 0 ? later.NEVER : count === 1 ? results[0] : results;
@@ -909,7 +922,7 @@ later = function() {
     return val >= cur || !val ? period.start(period.prev(d, period.val(d) - 1)) : period.start(d);
   };
   later.parse = {};
-  later.parse.cron = function(expr, hasSeconds) {
+  later.parse.cron = function(expr, hasSeconds, tz) {
     var NAMES = {
       JAN: 1,
       FEB: 2,
@@ -1040,7 +1053,8 @@ later = function() {
     function parseExpr(expr) {
       var schedule = {
         schedules: [ {} ],
-        exceptions: []
+        exceptions: [],
+        tz: tz
       }, components = expr.replace(/(\s)+/g, " ").split(" "), field, f, component, items;
       for (field in FIELDS) {
         f = FIELDS[field];
@@ -1226,7 +1240,7 @@ later = function() {
       }
     };
   };
-  later.parse.text = function(str) {
+  later.parse.text = function(str, tz) {
     var recur = later.parse.recur, pos = 0, input = "", error;
     var TOKENTYPES = {
       eof: /^$/,
@@ -1450,6 +1464,7 @@ later = function() {
       return {
         schedules: r.schedules,
         exceptions: r.exceptions,
+        tz: tz,
         error: error
       };
     }
