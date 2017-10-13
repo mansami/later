@@ -633,12 +633,13 @@ later = function() {
       var compare = compareFn(dir), loopCount = count, maxAttempts = 1e3, schedStarts = [], exceptStarts = [], next, end, results = [], isForward = dir === "next", lastResult, rStart = isForward ? 0 : 1, rEnd = isForward ? 1 : 0;
       startDate = startDate ? new Date(startDate) : new Date();
       if (!startDate || !startDate.getTime()) throw new Error("Invalid start date.");
-      var offset = 0;
+      var offset = 0, localOffset = moment.tz.zone(moment.tz.guess()).parse(startDate);     
       if(sched.tz){
         offset = moment.tz.zone(sched.tz).parse(startDate);
-        startDate.setTime(startDate.getTime() - offset*60*1000);
+        offset = localOffset - offset;
+        startDate.setTime(startDate.getTime() - offset * 60 * 1000);
         if(endDate){
-          endDate.setTime(endDate.getTime() - offset*60*1000);
+          endDate.setTime(endDate.getTime() - offset * 60 * 1000);
         }
       }
       setNextStarts(dir, schedules, schedStarts, startDate);
